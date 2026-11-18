@@ -245,7 +245,7 @@ const DEFAULT_SRC = {
 };
 const GAMES = {
   lotto: { name:"LOTTO 6aus49", main:{n:6,max:49}, extra:{label:"Superzahl", n:1, min:0, max:9, tippable:false},
-           drawDays:[3,6], drawTime:"19:25", pool:10 },
+           drawDays:[3,6], drawTime:{3:"18:25",6:"19:25"}, pool:10 },
   ej:    { name:"Eurojackpot", main:{n:5,max:50}, extra:{label:"Eurozahlen", n:2, min:1, max:12, tippable:true, since:"2022-03-25"},
            drawDays:[2,5], drawTime:"20:00", pool:10, extraPool:4 },
   keno:  { name:"KENO", main:{n:20,max:70}, extra:null, drawDays:[0,1,2,3,4,5,6], drawTime:"19:10", pool:15 }
@@ -410,12 +410,13 @@ function ball(v, cls="", tag=null, delay=0){
   const t = tag==="hot" ? '<span class="tag">🔥</span>' : tag==="cold" ? '<span class="tag">❄️</span>' : "";
   return `<div class="ball ${cls}" style="animation-delay:${delay}ms">${v}${t}</div>`;
 }
+function drawTimeFor(g, d){ return typeof g.drawTime==="string" ? g.drawTime : g.drawTime[d.getDay()]; }
 function nextDraw(gk){
   const g = GAMES[gk], now = new Date();
   for (let i=0;i<8;i++){
     const d = new Date(now); d.setDate(now.getDate()+i);
     if (g.drawDays.includes(d.getDay())){
-      const [hh,mm] = g.drawTime.split(":").map(Number); d.setHours(hh,mm,0,0);
+      const [hh,mm] = drawTimeFor(g, d).split(":").map(Number); d.setHours(hh,mm,0,0);
       if (d > now) return d;
     }
   }
@@ -436,7 +437,7 @@ function renderLast(){
     ${isK ? `<div class="kenogrid">${d.main.map((n,i)=>ball(n,"sm pop","",i*35)).join("")}</div>`
           : `<div class="row">${d.main.map((n,i)=>ball(n,"pop","",i*70)).join("")}${extraHtml}</div>`}
     <div class="sub" style="margin-top:8px">${g.main.n} aus ${g.main.max}${d.extra.length? " · "+g.extra.label+(gk==="ej"?" 2 aus 12":" (rot)"):""}${isK?" · täglich um 19:10 Uhr":""}</div>
-    <div class="next"><span>Nächste Ziehung</span><b>${nd ? `${WD[nd.getDay()]}, ${String(nd.getDate()).padStart(2,"0")}.${String(nd.getMonth()+1).padStart(2,"0")}. · ${g.drawTime} Uhr` : "–"}</b></div>
+    <div class="next"><span>Nächste Ziehung</span><b>${nd ? `${WD[nd.getDay()]}, ${String(nd.getDate()).padStart(2,"0")}.${String(nd.getMonth()+1).padStart(2,"0")}. · ${drawTimeFor(g,nd)} Uhr` : "–"}</b></div>
     <details class="hist"><summary>Vorherige Ziehungen</summary>${hist}</details>`;
 }
 function renderGenCtrls(){
