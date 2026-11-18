@@ -1,5 +1,5 @@
 // Offline-Fähigkeit: App-Shell aus dem Cache, Ziehungsdaten immer zuerst frisch aus dem Netz.
-const CACHE = "gz-v1";
+const CACHE = "gz-v2";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {

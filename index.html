@@ -24,6 +24,7 @@
   font-family:"Outfit",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 }
 body[data-game="ej"]{ --accent:#f7b733; --accent2:#3b5bff; }
+body[data-game="keno"]{ --accent:#3ddc97; --accent2:#ff8a3d; }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;min-height:100%}
 body{
@@ -47,9 +48,9 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;ma
 .iconbtn.spin svg{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid var(--card-b);margin-bottom:16px}
-.tabs button{border:0;background:transparent;color:var(--muted);font:600 15px/1 inherit;padding:12px 8px;border-radius:12px;cursor:pointer;transition:.25s}
-.tabs button.on{background:var(--accent);color:#1b1500;box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 35%,transparent)}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:5px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid var(--card-b);margin-bottom:16px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:600 15px/1 inherit;padding:12px 6px;white-space:nowrap;border-radius:12px;cursor:pointer;transition:.25s}
+.tabs button.on{background:var(--accent);color:#10150f;box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 35%,transparent)}
 
 .card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);padding:18px;margin-bottom:14px;
 }
@@ -79,6 +80,9 @@ details.hist summary:before{content:"▸ ";}
 details.hist[open] summary:before{content:"▾ ";}
 .histrow{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);flex-wrap:wrap}
 .histrow .d{width:96px;color:var(--muted);font-size:13px}
+.kenogrid{display:grid;grid-template-columns:repeat(10,auto);gap:6px;justify-content:start}
+.typseg button{min-width:44px;font-weight:600}
+@media (max-width:560px){.tabs button{font-size:13.5px}.kenogrid{gap:4px}.kenogrid .ball,#lastBody .kenogrid .ball{--s:28px}}
 
 .seg{display:flex;flex-wrap:wrap;gap:6px}
 .seg button{border:1px solid var(--card-b);background:rgba(0,0,0,.18);color:var(--muted);font:500 14px/1 inherit;padding:10px 12px;border-radius:12px;cursor:pointer;transition:.2s}
@@ -145,6 +149,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   <nav class="tabs" id="tabs">
     <button data-g="lotto">LOTTO 6aus49</button>
     <button data-g="ej">Eurojackpot</button>
+    <button data-g="keno">KENO</button>
   </nav>
 
   <!-- Letzte Ziehung -->
@@ -157,6 +162,10 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   <section class="card">
     <h2>Tipp-Generator</h2>
     <div class="sub" id="genSub"></div>
+    <div id="typBox" style="display:none">
+      <div class="label">KENO-Typ (wie viele Zahlen du tippst)</div>
+      <div class="seg typseg" id="typSeg"></div>
+    </div>
     <div class="label">Methode</div>
     <div class="seg" id="modeSeg">
       <button data-m="zufall"><span class="e">🎲</span>Reiner Zufall</button>
@@ -217,6 +226,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
     <div class="sub" style="margin-top:6px">CSV-Dateien mit Spalten <code>date,n1…n6,superzahl</code> bzw. <code>date,…,n1…n5,e1,e2</code>. Müssen CORS erlauben (GitHub-Raw tut das).</div>
     <label>LOTTO 6aus49</label><input id="srcLotto" spellcheck="false">
     <label>Eurojackpot</label><input id="srcEj" spellcheck="false">
+    <label>KENO</label><input id="srcKeno" spellcheck="false">
     <div class="row" style="margin-top:16px;justify-content:flex-end">
       <button class="mini" id="srcReset">Standard</button>
       <button class="mini on" id="srcSave">Speichern &amp; laden</button>
@@ -230,13 +240,15 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 /* ---------- Konfiguration ---------- */
 const DEFAULT_SRC = {
   lotto: "https://raw.githubusercontent.com/daowa89/lottery-archive/main/de/lotto_6aus49/results.csv",
-  ej:    "https://raw.githubusercontent.com/bostjanvihar/eurojp/main/data/eurojackpot.csv"
+  ej:    "https://raw.githubusercontent.com/bostjanvihar/eurojp/main/data/eurojackpot.csv",
+  keno:  "https://raw.githubusercontent.com/Chancentod7367/Lotto-Zufallszahlen/main/data/keno.csv"
 };
 const GAMES = {
   lotto: { name:"LOTTO 6aus49", main:{n:6,max:49}, extra:{label:"Superzahl", n:1, min:0, max:9, tippable:false},
            drawDays:[3,6], drawTime:"19:25", pool:10 },
   ej:    { name:"Eurojackpot", main:{n:5,max:50}, extra:{label:"Eurozahlen", n:2, min:1, max:12, tippable:true, since:"2022-03-25"},
-           drawDays:[2,5], drawTime:"20:00", pool:10, extraPool:4 }
+           drawDays:[2,5], drawTime:"20:00", pool:10, extraPool:4 },
+  keno:  { name:"KENO", main:{n:20,max:70}, extra:null, drawDays:[0,1,2,3,4,5,6], drawTime:"19:10", pool:15 }
 };
 const WD = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
 const MON = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
@@ -254,12 +266,14 @@ const S = {
   win:  store.get("win",500),
   heat: "freq",
   tips: store.get("tips",1),
-  k:    store.get("k",{lotto:2,ej:2}),
+  k:    Object.assign({lotto:2,ej:2,keno:3}, store.get("k",{})),
+  typ:  store.get("typ",10),
   ek:   store.get("ek",1),
   src:  Object.assign({}, DEFAULT_SRC, store.get("src",{})),
+  // Anzahl getippter Zahlen je Spiel (bei KENO = Typ)
   data: {},   // game -> {draws:[{date,main,extra}], loadedAt, fromCache}
   err:  {},
-  lastTips: {lotto:[], ej:[]}
+  lastTips: {lotto:[], ej:[], keno:[]}
 };
 const $ = s => document.querySelector(s);
 
@@ -283,10 +297,10 @@ function parseCSV(text, gameKey){
   if (hasHeader && idx("n1")>=0){
     iDate = head.findIndex(h=>/date|datum/.test(h));
     iMain = range(1,g.main.n).map(i=>idx("n"+i));
-    iExtra = gameKey==="lotto" ? [head.findIndex(h=>/super|^sz$/.test(h))] : [idx("e1"),idx("e2")];
+    iExtra = !g.extra ? [] : gameKey==="lotto" ? [head.findIndex(h=>/super|^sz$/.test(h))] : [idx("e1"),idx("e2")];
   } else { // positionsbasiert: Datum zuerst
     iDate = 0; iMain = range(1,g.main.n);
-    iExtra = range(g.main.n+1, g.main.n+g.extra.n);
+    iExtra = g.extra ? range(g.main.n+1, g.main.n+g.extra.n) : [];
   }
   const draws = [];
   for (let li = hasHeader?1:0; li<lines.length; li++){
@@ -294,7 +308,8 @@ function parseCSV(text, gameKey){
     const date = normDate(c[iDate]); if(!date) continue;
     const main = iMain.map(i=>parseInt(c[i],10));
     if (main.some(n=>!(n>=1 && n<=g.main.max))) continue;
-    const extra = iExtra.map(i=> i>=0 && c[i]!=="" && c[i]!=null ? parseInt(c[i],10) : NaN)
+    if (gameKey==="keno") main.sort((a,b)=>a-b);
+    const extra = !g.extra ? [] : iExtra.map(i=> i>=0 && c[i]!=="" && c[i]!=null ? parseInt(c[i],10) : NaN)
                         .filter(n=>Number.isFinite(n) && n>=g.extra.min && n<=g.extra.max);
     draws.push({date, main, extra});
   }
@@ -347,6 +362,7 @@ function stats(gameKey){
   const hot  = nums.slice().sort((a,b)=> freq[b]-freq[a] || gap[a]-gap[b]);
   const cold = nums.slice().sort((a,b)=> gap[b]-gap[a] || freq[a]-freq[b]);
   // Zusatz (Eurozahlen / Superzahl): nur Ziehungen nach gültigem Regelstand
+  if (!g.extra) return {all, win, freq, gap, hot, cold};
   const ex = g.extra, exAll = all.filter(d=> d.extra.length===ex.n && (!ex.since || d.date>=ex.since));
   const exWin = S.win ? exAll.slice(0,S.win) : exAll;
   const efreq = {}, egap = {};
@@ -374,13 +390,15 @@ function genField(max, min, n, k, hotList, coldList, poolSize, mode){
   pickFrom(rest, n - chosen.size).forEach(x=>chosen.set(x,null));
   return [...chosen.entries()].sort((a,b)=>a[0]-b[0]).map(([v,t])=>({v,t}));
 }
+function pickCount(gk){ return gk==="keno" ? S.typ : GAMES[gk].main.n; }
 function generate(){
   const gk = S.game, g = GAMES[gk], st = stats(gk);
   if(!st){ toast("Noch keine Daten geladen"); return; }
   const out = [];
   for (let i=0;i<S.tips;i++){
-    const main = genField(g.main.max, 1, g.main.n, S.k[gk], st.hot, st.cold, g.pool, S.mode);
-    const extra = g.extra.tippable ? genField(g.extra.max, g.extra.min, g.extra.n, S.ek, st.ehot, st.ecold, g.extraPool, S.mode) : [];
+    const n = pickCount(gk);
+    const main = genField(g.main.max, 1, n, Math.min(S.k[gk], n), st.hot, st.cold, g.pool, S.mode);
+    const extra = g.extra && g.extra.tippable ? genField(g.extra.max, g.extra.min, g.extra.n, S.ek, st.ehot, st.ecold, g.extraPool, S.mode) : [];
     out.push({main, extra});
   }
   S.lastTips[gk] = out;
@@ -405,15 +423,19 @@ function nextDraw(gk){
 function renderLast(){
   const gk=S.game, g=GAMES[gk], D=S.data[gk], el=$("#lastBody"), card=$("#lastCard");
   card.classList.toggle("err", !D && !!S.err[gk]);
-  if(!D){ el.innerHTML = S.err[gk] ? `<div class="sub">Daten konnten nicht geladen werden (${S.err[gk]}). Internetverbindung prüfen oder Quelle in ⚙︎ anpassen.</div>` : `<div class="skel"></div>`; return; }
+  if(!D){ el.innerHTML = !S.err[gk] ? `<div class="skel"></div>`
+      : gk==="keno" && /404/.test(S.err[gk]) ? `<div class="sub">Noch keine KENO-Daten vorhanden. Im GitHub-Repo unter <b>Actions → „KENO-Zahlen aktualisieren“ → Run workflow</b> einmal starten – danach kommen die Zahlen täglich automatisch.</div>`
+      : `<div class="sub">Daten konnten nicht geladen werden (${S.err[gk]}). Internetverbindung prüfen oder Quelle in ⚙︎ anpassen.</div>`; return; }
   const d = D.draws[0];
   const nd = nextDraw(gk);
   const extraHtml = d.extra.length ? `<span class="sep"></span>${d.extra.map((n,i)=>ball(n,"x pop","",(d.main.length+i)*70)).join("")}` : "";
+  const isK = gk==="keno";
   const hist = D.draws.slice(1,11).map(x=>`<div class="histrow"><span class="d">${fmtDate(x.date,false)}</span>${x.main.map(n=>ball(n,"xs")).join("")}${x.extra.length?'<span class="sep"></span>'+x.extra.map(n=>ball(n,"xs x")).join(""):""}</div>`).join("");
   el.innerHTML = `
     <div class="datebig">${fmtDate(d.date)}</div>
-    <div class="row">${d.main.map((n,i)=>ball(n,"pop","",i*70)).join("")}${extraHtml}</div>
-    <div class="sub" style="margin-top:8px">${g.main.n} aus ${g.main.max}${d.extra.length? " · "+g.extra.label+(gk==="ej"?" 2 aus 12":" (rot)"):""}</div>
+    ${isK ? `<div class="kenogrid">${d.main.map((n,i)=>ball(n,"sm pop","",i*35)).join("")}</div>`
+          : `<div class="row">${d.main.map((n,i)=>ball(n,"pop","",i*70)).join("")}${extraHtml}</div>`}
+    <div class="sub" style="margin-top:8px">${g.main.n} aus ${g.main.max}${d.extra.length? " · "+g.extra.label+(gk==="ej"?" 2 aus 12":" (rot)"):""}${isK?" · täglich um 19:10 Uhr":""}</div>
     <div class="next"><span>Nächste Ziehung</span><b>${nd ? `${WD[nd.getDay()]}, ${String(nd.getDate()).padStart(2,"0")}.${String(nd.getMonth()+1).padStart(2,"0")}. · ${g.drawTime} Uhr` : "–"}</b></div>
     <details class="hist"><summary>Vorherige Ziehungen</summary>${hist}</details>`;
 }
@@ -421,17 +443,20 @@ function renderGenCtrls(){
   const gk=S.game, g=GAMES[gk];
   document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on", b.dataset.m===S.mode));
   $("#mixCtrls").style.display = S.mode==="zufall" ? "none" : "";
-  const kr=$("#kRange"); kr.max = g.main.n; kr.value = Math.min(S.k[gk], g.main.n);
+  const n = pickCount(gk);
+  $("#typBox").style.display = gk==="keno" ? "" : "none";
+  if (gk==="keno") $("#typSeg").innerHTML = [10,9,8,7,6,5,4,3,2].map(t=>`<button data-t="${t}" class="${t===S.typ?"on":""}">${t}</button>`).join("");
+  const kr=$("#kRange"); kr.max = n; kr.value = Math.min(S.k[gk], n);
   const what = S.mode==="hot"?"häufigen":S.mode==="cold"?"überfälligen":"häufigen/überfälligen";
   $("#kLabel").textContent = `Davon aus den Top ${g.pool} ${what} Zahlen`;
-  $("#kVal").textContent = `${kr.value} von ${g.main.n}`;
-  const showE = g.extra.tippable;
+  $("#kVal").textContent = `${kr.value} von ${n}`;
+  const showE = !!(g.extra && g.extra.tippable);
   $("#ekLabel").style.display = $("#ekRow").style.display = showE ? "" : "none";
   if (showE){ $("#ekRange").value=S.ek; $("#ekLabel").textContent=`Eurozahlen aus den Top ${g.extraPool}`; $("#ekVal").textContent=`${S.ek} von 2`; }
   $("#tCount").textContent = S.tips;
-  $("#genSub").textContent = gk==="lotto"
-    ? "6 aus 49 – die Superzahl ergibt sich aus der Spielscheinnummer."
-    : "5 aus 50 plus 2 Eurozahlen aus 12.";
+  $("#genSub").textContent = gk==="lotto" ? "6 aus 49 – die Superzahl ergibt sich aus der Spielscheinnummer."
+    : gk==="ej" ? "5 aus 50 plus 2 Eurozahlen aus 12."
+    : `KENO-Typ ${S.typ}: ${S.typ} Zahlen aus 70 – gezogen werden täglich 20.`;
 }
 function renderTips(animate=false){
   const gk=S.game, tips=S.lastTips[gk], el=$("#tips");
@@ -445,6 +470,7 @@ function renderTips(animate=false){
 }
 function tipText(gk,t){
   const m = t.main.map(b=>b.v).join(" - ");
+  if (gk==="keno") return `KENO Typ ${t.main.length}: ${m}`;
   return GAMES[gk].name+": "+m + (t.extra.length ? "  |  Eurozahlen: "+t.extra.map(b=>b.v).join(" - ") : "");
 }
 function chip(n, sub, cls=""){ return `<span class="chip">${ball(n,"xs "+cls)}${sub}</span>`; }
@@ -453,10 +479,12 @@ function renderStats(){
   document.querySelectorAll("#winSeg button").forEach(b=>b.classList.toggle("on", +b.dataset.w===S.win));
   document.querySelectorAll("#heatSeg button").forEach(b=>b.classList.toggle("on", b.dataset.h===S.heat));
   if(!st){ ["#hotChips","#coldChips","#grid","#extraStats"].forEach(s=>$(s).innerHTML=""); return; }
-  $("#hotChips").innerHTML = st.hot.slice(0,6).map(n=>chip(n, `${st.freq[n]}×`)).join("");
-  $("#coldChips").innerHTML = st.cold.slice(0,6).map(n=>chip(n, `seit ${st.gap[n]}`)).join("");
+  const nChip = gk==="keno" ? 10 : 6;
+  $("#hotChips").innerHTML = st.hot.slice(0,nChip).map(n=>chip(n, `${st.freq[n]}×`)).join("");
+  $("#coldChips").innerHTML = st.cold.slice(0,nChip).map(n=>chip(n, `seit ${st.gap[n]}`)).join("");
   const ex = g.extra;
-  $("#extraStats").innerHTML = `<div class="two" style="margin-top:4px">
+  if (!ex){ $("#extraStats").innerHTML = `<div class="sub" style="margin-top:8px;font-size:12px">Basis: ${st.win.length} Ziehungen (${fmtDate(st.win[st.win.length-1].date,false)} – ${fmtDate(st.win[0].date,false)}) · 20 aus 70 je Ziehung</div>`; }
+  else $("#extraStats").innerHTML = `<div class="two" style="margin-top:4px">
       <div><div class="label">🔥 ${ex.label} häufig</div><div class="chips">${st.ehot.slice(0,4).map(n=>chip(n,`${st.efreq[n]}×`,"x")).join("")}</div></div>
       <div><div class="label">❄️ ${ex.label} überfällig</div><div class="chips">${st.ecold.slice(0,4).map(n=>chip(n,`seit ${st.egap[n]}`,"x")).join("")}</div></div>
     </div>
@@ -477,12 +505,12 @@ function renderSaved(){
   if(!list.length){ el.innerHTML = `<div class="empty">Noch nichts gemerkt. Tippe bei einem generierten Tipp auf „Merken“ – nach der nächsten Ziehung siehst du hier deine Treffer.</div>`; return; }
   el.innerHTML = list.map((s,i)=>{
     const draw = D && D.draws.slice().reverse().find(d=>d.date >= s.forDate);
-    let res = `<span class="sub" style="font-size:12px">für ${fmtDate(s.forDate,false)}</span>`;
+    let res = `<span class="sub" style="font-size:12px">${gk==="keno"?"Typ "+s.main.length+" · ":""}für ${fmtDate(s.forDate,false)}</span>`;
     let hitsMain = new Set(), hitsEx = new Set();
     if (draw){
       s.main.forEach(n=>{ if(draw.main.includes(n)) hitsMain.add(n); });
       s.extra.forEach(n=>{ if(draw.extra.includes(n)) hitsEx.add(n); });
-      res = `<span class="sub" style="font-size:12px">Ziehung ${fmtDate(draw.date,false)}: <span class="hit">${hitsMain.size} Richtige${s.extra.length?" + "+hitsEx.size+" EZ":""}</span></span>`;
+      res = `<span class="sub" style="font-size:12px">Ziehung ${fmtDate(draw.date,false)}: <span class="hit">${hitsMain.size}${gk==="keno"?" von "+s.main.length:""} Richtige${s.extra.length?" + "+hitsEx.size+" EZ":""}</span></span>`;
     }
     return `<div class="tip">${s.main.map(n=>`<div class="ball xs" style="${draw&&!hitsMain.has(n)?"opacity:.35":""}">${n}</div>`).join("")}
       ${s.extra.length?'<span class="sep"></span>'+s.extra.map(n=>`<div class="ball xs x" style="${draw&&!hitsEx.has(n)?"opacity:.35":""}">${n}</div>`).join(""):""}
@@ -496,7 +524,7 @@ function renderStatus(){
     return `${GAMES[gk].name}: ${D.draws.length} Ziehungen, Stand ${t.toLocaleDateString("de-DE")} ${t.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})}${S.err[gk]?" (offline – Cache)":""}`;
   });
   $("#status").innerHTML = parts.join("<br>") +
-    `<br>Quellen: <a href="https://github.com/daowa89/lottery-archive" target="_blank" rel="noopener">lottery-archive</a> · <a href="https://github.com/bostjanvihar/eurojp" target="_blank" rel="noopener">eurojp</a> · Alle Angaben ohne Gewähr.<br>Jede Ziehung ist unabhängig – häufig/überfällig ändert die Chancen nicht, macht aber Spaß 😉`;
+    `<br>Quellen: <a href="https://github.com/daowa89/lottery-archive" target="_blank" rel="noopener">lottery-archive</a> · <a href="https://github.com/bostjanvihar/eurojp" target="_blank" rel="noopener">eurojp</a> · KENO: LOTTO Bayern · Alle Angaben ohne Gewähr.<br>Jede Ziehung ist unabhängig – häufig/überfällig ändert die Chancen nicht, macht aber Spaß 😉`;
 }
 function render(){
   document.body.dataset.game = S.game;
@@ -515,6 +543,7 @@ $("#ekRange").addEventListener("input",e=>{ S.ek=+e.target.value; store.set("ek"
 $("#tMinus").onclick=()=>{ S.tips=Math.max(1,S.tips-1); store.set("tips",S.tips); renderGenCtrls(); };
 $("#tPlus").onclick =()=>{ S.tips=Math.min(10,S.tips+1); store.set("tips",S.tips); renderGenCtrls(); };
 $("#btnGo").onclick = generate;
+$("#typSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; S.typ=+b.dataset.t; store.set("typ",S.typ); renderGenCtrls(); });
 $("#tips").addEventListener("click", async e=>{
   const c=e.target.closest("[data-copy]"), s=e.target.closest("[data-save]"); const gk=S.game;
   if(c){ const t=S.lastTips[gk][+c.dataset.copy]; try{ await navigator.clipboard.writeText(tipText(gk,t)); toast("Kopiert 📋"); }catch{ toast(tipText(gk,t)); } }
@@ -531,12 +560,12 @@ async function refresh(force){
   if(force) toast(Object.values(S.err).some(Boolean) ? "Teilweise offline – zeige Cache" : "Aktualisiert ✓");
 }
 $("#btnRefresh").onclick=()=>refresh(true);
-$("#btnSettings").onclick=()=>{ $("#srcLotto").value=S.src.lotto; $("#srcEj").value=S.src.ej; $("#sheet").classList.add("on"); };
+$("#btnSettings").onclick=()=>{ $("#srcLotto").value=S.src.lotto; $("#srcEj").value=S.src.ej; $("#srcKeno").value=S.src.keno; $("#sheet").classList.add("on"); };
 $("#sheetClose").onclick=()=>$("#sheet").classList.remove("on");
 $("#sheet").addEventListener("click",e=>{ if(e.target.id==="sheet") $("#sheet").classList.remove("on"); });
-$("#srcReset").onclick=()=>{ $("#srcLotto").value=DEFAULT_SRC.lotto; $("#srcEj").value=DEFAULT_SRC.ej; };
-$("#srcSave").onclick=()=>{ S.src={lotto:$("#srcLotto").value.trim()||DEFAULT_SRC.lotto, ej:$("#srcEj").value.trim()||DEFAULT_SRC.ej};
-  store.set("src",S.src); store.set("csv:lotto",null); store.set("csv:ej",null); S.data={}; $("#sheet").classList.remove("on"); refresh(true); };
+$("#srcReset").onclick=()=>{ $("#srcLotto").value=DEFAULT_SRC.lotto; $("#srcEj").value=DEFAULT_SRC.ej; $("#srcKeno").value=DEFAULT_SRC.keno; };
+$("#srcSave").onclick=()=>{ S.src={lotto:$("#srcLotto").value.trim()||DEFAULT_SRC.lotto, ej:$("#srcEj").value.trim()||DEFAULT_SRC.ej, keno:$("#srcKeno").value.trim()||DEFAULT_SRC.keno};
+  store.set("src",S.src); store.set("csv:lotto",null); store.set("csv:ej",null); store.set("csv:keno",null); S.data={}; $("#sheet").classList.remove("on"); refresh(true); };
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") refresh(false); });
 
 /* ---------- Start ---------- */

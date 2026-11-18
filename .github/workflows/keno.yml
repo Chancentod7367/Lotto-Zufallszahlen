@@ -1,0 +1,36 @@
+name: KENO-Zahlen aktualisieren
+
+on:
+  workflow_dispatch:        # manuell über "Run workflow" startbar
+  schedule:
+    - cron: "45 18 * * *"   # täglich 19:45 (Winter) / 20:45 (Sommer) deutscher Zeit
+    - cron: "30 21 * * *"   # Nachzügler-Lauf am späten Abend
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keno-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: KENO-Archiv laden
+        run: python scripts/update_keno.py
+      - name: Änderungen speichern
+        run: |
+          if [ -z "$(git status --porcelain data)" ]; then
+            echo "Keine neuen Ziehungen."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git commit -m "KENO-Zahlen aktualisiert"
+          git push
